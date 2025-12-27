@@ -1,0 +1,73 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fonction helper pour vérifier si l'utilisateur est admin
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur est connecté
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Collection users - mode développement : accessible à tous pour test
+    // TODO: Restreindre en production avec isAdmin()
+    match /users/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection brands - accessible à tous les utilisateurs connectés
+    match /brands/{brandId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection models - accessible à tous les utilisateurs connectés
+    match /models/{modelId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection vehicles - accessible à tous les utilisateurs connectés
+    match /vehicles/{vehicleId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection clients - accessible à tous les utilisateurs connectés
+    match /clients/{clientId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection locations - accessible à tous les utilisateurs connectés
+    match /locations/{locationId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection invoices - accessible à tous les utilisateurs connectés
+    match /invoices/{invoiceId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection invoiceLines - accessible à tous les utilisateurs connectés
+    match /invoiceLines/{lineId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection payments - accessible à tous les utilisateurs connectés
+    match /payments/{paymentId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection payment_lines - accessible à tous les utilisateurs connectés
+    match /payment_lines/{lineId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collection payment_allocations - accessible à tous les utilisateurs connectés
+    match /payment_allocations/{allocationId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
