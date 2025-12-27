@@ -345,7 +345,7 @@ onMounted(async () => {
                             placeholder="Sélectionner un client" filter :style="{ width: '100%' }">
                             <template #value="slotProps">
                                 <span v-if="slotProps.value">{{ slotProps.value.prenom }} {{ slotProps.value.nom
-                                    }}</span>
+                                }}</span>
                                 <span v-else>{{ slotProps.placeholder }}</span>
                             </template>
                             <template #option="slotProps">
@@ -402,30 +402,30 @@ onMounted(async () => {
                     <DataTable :value="paymentLines">
                         <Column field="paymentMethod" header="Mode *">
                             <template #body="slotProps">
-                                <Dropdown v-model="paymentLines[slotProps.index].paymentMethod"
+                                <Dropdown v-model="paymentLines[slotProps.index]!.paymentMethod"
                                     :options="paymentMethods" optionLabel="label" optionValue="value" />
                             </template>
                         </Column>
                         <Column field="amount" header="Montant *">
                             <template #body="slotProps">
-                                <InputNumber v-model="paymentLines[slotProps.index].amount" mode="currency"
+                                <InputNumber v-model="paymentLines[slotProps.index]!.amount" mode="currency"
                                     currency="TND" locale="fr-TN" />
                             </template>
                         </Column>
                         <Column field="reference" header="Référence">
                             <template #body="slotProps">
-                                <InputText v-model="paymentLines[slotProps.index].reference" />
+                                <InputText v-model="paymentLines[slotProps.index]!.reference" />
                             </template>
                         </Column>
                         <Column field="bankName" header="Banque">
                             <template #body="slotProps">
-                                <InputText v-model="paymentLines[slotProps.index].bankName" />
+                                <InputText v-model="paymentLines[slotProps.index]!.bankName" />
                             </template>
                         </Column>
                         <Column field="dueDate" header="Échéance">
                             <template #body="slotProps">
-                                <Calendar v-model="paymentLines[slotProps.index].dueDate" dateFormat="dd/mm/yy"
-                                    v-if="['traite', 'cheque'].includes(paymentLines[slotProps.index].paymentMethod)" />
+                                <Calendar v-model="paymentLines[slotProps.index]!.dueDate" dateFormat="dd/mm/yy"
+                                    v-if="['traite', 'cheque'].includes(paymentLines[slotProps.index]!.paymentMethod)" />
                             </template>
                         </Column>
                         <Column header="Actions">
@@ -458,7 +458,7 @@ onMounted(async () => {
                         <ul>
                             <li v-for="invoice in selectedInvoices" :key="invoice.id">
                                 {{ invoice.invoiceNumber }} - {{ formatCurrency(invoice.remainingAmount ||
-                                invoice.totalTTC) }}
+                                    invoice.totalTTC) }}
                             </li>
                         </ul>
                     </div>

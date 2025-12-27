@@ -9,7 +9,7 @@ import Tag from 'primevue/tag'
 import Toast from 'primevue/toast'
 import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
-import { get UpcomingDueDates, getOverdueDueDates, updatePaymentLineStatus, type PaymentLine } from '../services/paymentService'
+import { getUpcomingDueDates, getOverdueDueDates, updatePaymentLineStatus, type PaymentLine } from '../services/paymentService'
 import { getAllClients, type Client } from '../services/clientService'
 
 const toast = useToast()

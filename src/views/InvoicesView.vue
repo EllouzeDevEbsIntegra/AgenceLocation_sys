@@ -616,6 +616,9 @@ const validateInvoiceCreation = async () => {
             timbreFiscal: totals.value.timbreFiscal,
             totalTTC: totals.value.netAPayer,
             status: 'validated',
+            paymentStatus: 'non_regle',
+            paidAmount: 0,
+            remainingAmount: totals.value.netAPayer,
             createdAt: new Date()
         }
 
@@ -668,8 +671,8 @@ const numberToWords = (num: number): string => {
     const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix']
 
     const convert = (n: number): string => {
-        if (n < 10) return ones[n]
-        if (n < 20) return teens[n - 10]
+        if (n < 10) return ones[n]!
+        if (n < 20) return teens[n - 10]!
         if (n < 100) {
             const ten = Math.floor(n / 10)
             const one = n % 10
