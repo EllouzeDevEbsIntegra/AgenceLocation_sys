@@ -16,7 +16,7 @@ import Tag from 'primevue/tag'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import {
-    getAllPayments, createPayment, getPaymentLines, getPaymentAllocations,
+    getAllPayments, createPayment, updatePayment, getPaymentLines, getPaymentAllocations,
     generatePaymentNumber,
     type Payment, type PaymentLine, type PaymentAllocation, type PaymentMethod
 } from '../services/paymentService'
@@ -38,6 +38,11 @@ const dialogStep = ref(1) // 1-4 steps
 const selectedClient = ref<Client | null>(null)
 const selectedInvoices = ref<InvoiceHeader[]>([])
 const availableInvoices = ref<InvoiceHeader[]>([])
+
+// Edit state
+const isEditing = ref(false)
+const editingPaymentId = ref<string | null>(null)
+const originalAllocations = ref<PaymentAllocation[]>([])
 
 // Details dialog
 const detailsDialogVisible = ref(false)
@@ -118,7 +123,78 @@ const openCreateDialog = async () => {
     selectedInvoices.value = []
     paymentLines.value = []
     dialogStep.value = 1
+    isEditing.value = false
+    editingPaymentId.value = null
+    originalAllocations.value = []
     dialogVisible.value = true
+}
+
+const openEditDialog = async (payment: Payment) => {
+    loading.value = true
+    try {
+        isEditing.value = true
+        editingPaymentId.value = payment.id!
+
+        // Load details
+        const lines = await getPaymentLines(payment.id!)
+        const allocations = await getPaymentAllocations(payment.id!)
+        originalAllocations.value = allocations // Store for revert
+
+        // Setup form
+        paymentForm.value = {
+            paymentNumber: payment.paymentNumber,
+            paymentDate: new Date(payment.paymentDate),
+            clientId: payment.clientId,
+            totalAmount: payment.totalAmount,
+            notes: payment.notes,
+            createdAt: payment.createdAt
+        }
+
+        // Setup lines
+        paymentLines.value = lines.map(l => ({
+            paymentMethod: l.paymentMethod,
+            amount: l.amount,
+            reference: l.reference,
+            bankName: l.bankName,
+            dueDate: l.dueDate ? new Date(l.dueDate) : undefined,
+            status: l.status
+        }))
+
+        // Setup Client
+        selectedClient.value = clients.value.find(c => c.id === payment.clientId) || null
+
+        // Setup Invoices
+        // 1. Get unpaid invoices for this client
+        const unpaid = await getUnpaidInvoices(payment.clientId)
+
+        // 2. Get invoices currently allocated to this payment
+        const allocatedInvs: InvoiceHeader[] = []
+        for (const alloc of allocations) {
+            const inv = await getInvoiceById(alloc.invoiceId)
+            if (inv) allocatedInvs.push(inv)
+        }
+
+        // 3. Merge and Deduplicate
+        const allInvoices = [...unpaid]
+        allocatedInvs.forEach(inv => {
+            if (!allInvoices.find(i => i.id === inv.id)) {
+                allInvoices.push(inv)
+            }
+        })
+
+        availableInvoices.value = allInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())
+
+        // 4. Select the allocated ones
+        selectedInvoices.value = allocatedInvs
+
+        dialogStep.value = 1
+        dialogVisible.value = true
+    } catch (error) {
+        console.error('Error opening edit dialog:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le règlement', life: 3000 })
+    } finally {
+        loading.value = false
+    }
 }
 
 // Step navigation
@@ -128,13 +204,15 @@ const nextStep = async () => {
             toast.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner un client', life: 3000 })
             return
         }
-        // Load unpaid invoices
-        try {
-            availableInvoices.value = await getUnpaidInvoices(selectedClient.value.id)
-            paymentForm.value.clientId = selectedClient.value.id!
-        } catch (error) {
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les factures', life: 3000 })
-            return
+        // Load unpaid invoices if not already loaded (for create mode mostly)
+        if (!isEditing.value) {
+            try {
+                availableInvoices.value = await getUnpaidInvoices(selectedClient.value.id)
+                paymentForm.value.clientId = selectedClient.value.id!
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les factures', life: 3000 })
+                return
+            }
         }
     } else if (dialogStep.value === 2) {
         if (selectedInvoices.value.length === 0) {
@@ -174,7 +252,7 @@ const removePaymentLine = (index: number) => {
     paymentLines.value.splice(index, 1)
 }
 
-// Create payment
+// Create/Update payment
 const validatePayment = async () => {
     if (!isAmountValid.value) {
         toast.add({ severity: 'warn', summary: 'Attention', detail: 'Montants invalides', life: 3000 })
@@ -186,32 +264,107 @@ const validatePayment = async () => {
         // Prepare allocations
         const allocations: Omit<PaymentAllocation, 'id' | 'paymentId' | 'allocationDate'>[] = []
         selectedInvoices.value.forEach(invoice => {
+            // For editing, we need to be careful with remainingAmount.
+            // If invoice was already allocated, its remainingAmount in memory might be 0 (if fully paid).
+            // But we want to allocate the FULL amount of the invoice that is being paid by THIS payment.
+            // Simplified: We allocate the invoice's totalTTC if fully paid, or whatever part is being paid.
+            // Actually, the logic should be:
+            // The user selected this invoice. We assume they are paying the *current remaining* + *previously allocated by this payment*.
+            // But `selectedInvoices` comes from `availableInvoices`.
+            // If it's a fresh invoice, `remainingAmount` is correct.
+            // If it's an invoice already paid by this payment, `remainingAmount` might be 0.
+            // We should probably rely on the user input or just allocate what's needed.
+            // In this simple system, we assume 1 payment pays X invoices fully or partially.
+            // Let's assume we pay the `remainingAmount` displayed in the table.
+            // Wait, if I edit, and I see an invoice with 0 remaining (because I paid it), I want to keep paying it.
+            // So the allocated amount should be `totalTTC - (paid by others)`.
+            // This is getting complicated.
+            // Let's simplify: We allocate `invoice.remainingAmount` IF it's positive.
+            // If it's 0 (fully paid by US), we allocate `invoice.totalTTC` (assuming we are the only payer? No).
+            // We need to know how much WE are paying.
+            // In the current UI, we don't allow specifying amount per invoice. We assume we pay the rest.
+            // So, for the purpose of this update:
+            // If we are editing, we first REVERT everything. So the invoices become "unpaid" (remaining increases).
+            // THEN we apply new allocations.
+            // So, logically, we should calculate allocations based on the *state after revert*.
+            // But we haven't reverted yet!
+
+            // Correct approach:
+            // 1. Revert in DB.
+            // 2. Fetch fresh invoice data (or calculate).
+            // 3. Apply new.
+
+            // But `allocations` array needs to be built BEFORE calling `createPayment` or `updatePayment`.
+            // And `updatePayment` does NOT update invoice statuses.
+
+            // So:
+            // We need to calculate `allocatedAmount` for each selected invoice.
+            // If it's a new invoice: `remainingAmount`.
+            // If it's an existing invoice (already paid by us): `remainingAmount + oldAllocation`.
+
+            let amountToPay = invoice.remainingAmount || 0
+            if (isEditing.value) {
+                const oldAlloc = originalAllocations.value.find(a => a.invoiceId === invoice.id)
+                if (oldAlloc) {
+                    amountToPay += oldAlloc.allocatedAmount
+                }
+            }
+            // If amountToPay is 0 (fully paid by others?), skip? No, maybe we want to pay it?
+            // But if it's 0, we can't pay more.
+            // Actually, `invoice.remainingAmount` in the table comes from `availableInvoices`.
+            // If we fetched it from DB, it reflects current state.
+
             allocations.push({
                 invoiceId: invoice.id!,
-                allocatedAmount: invoice.remainingAmount || invoice.totalTTC
+                allocatedAmount: amountToPay > 0 ? amountToPay : invoice.totalTTC // Fallback if something weird
             })
         })
 
         paymentForm.value.totalAmount = totalPaymentLines.value
 
-        // Create payment
-        await createPayment(paymentForm.value, paymentLines.value, allocations)
-
-        // Update invoice statuses
-        for (const allocation of allocations) {
-            const invoice = selectedInvoices.value.find(inv => inv.id === allocation.invoiceId)
-            if (invoice) {
-                const newPaidAmount = (invoice.paidAmount || 0) + allocation.allocatedAmount
-                await updateInvoicePaymentStatus(invoice.id!, newPaidAmount)
+        if (isEditing.value && editingPaymentId.value) {
+            // 1. Revert old allocations
+            for (const oldAlloc of originalAllocations.value) {
+                const inv = await getInvoiceById(oldAlloc.invoiceId)
+                if (inv) {
+                    const newPaid = Math.max(0, (inv.paidAmount || 0) - oldAlloc.allocatedAmount)
+                    await updateInvoicePaymentStatus(inv.id!, newPaid)
+                }
             }
+
+            // 2. Update Payment
+            await updatePayment(editingPaymentId.value, paymentForm.value, paymentLines.value, allocations)
+
+            // 3. Apply new allocations
+            for (const alloc of allocations) {
+                const inv = await getInvoiceById(alloc.invoiceId)
+                if (inv) {
+                    const newPaid = (inv.paidAmount || 0) + alloc.allocatedAmount
+                    await updateInvoicePaymentStatus(inv.id!, newPaid)
+                }
+            }
+
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Règlement mis à jour', life: 3000 })
+        } else {
+            // Create
+            await createPayment(paymentForm.value, paymentLines.value, allocations)
+
+            // Update invoice statuses
+            for (const allocation of allocations) {
+                const invoice = selectedInvoices.value.find(inv => inv.id === allocation.invoiceId)
+                if (invoice) {
+                    const newPaidAmount = (invoice.paidAmount || 0) + allocation.allocatedAmount
+                    await updateInvoicePaymentStatus(invoice.id!, newPaidAmount)
+                }
+            }
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Règlement créé avec succès', life: 3000 })
         }
 
-        toast.add({ severity: 'success', summary: 'Succès', detail: 'Règlement créé avec succès', life: 3000 })
         dialogVisible.value = false
         await loadPayments()
     } catch (error) {
-        console.error('Error creating payment:', error)
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de la création du règlement', life: 3000 })
+        console.error('Error saving payment:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de l\'enregistrement', life: 3000 })
     } finally {
         loading.value = false
     }
@@ -319,15 +472,20 @@ onMounted(async () => {
                 </Column>
                 <Column header="Actions">
                     <template #body="slotProps">
-                        <Button icon="pi pi-eye" label="Détails" size="small"
-                            @click="openDetailsDialog(slotProps.data)" />
+                        <div class="flex gap-2">
+                            <Button icon="pi pi-eye" label="Détails" size="small"
+                                @click="openDetailsDialog(slotProps.data)" />
+                            <Button icon="pi pi-pencil" label="Modifier" size="small" severity="secondary"
+                                @click="openEditDialog(slotProps.data)" />
+                        </div>
                     </template>
                 </Column>
             </DataTable>
 
-            <!-- Dialog Création (4 étapes)-->
-            <Dialog v-model:visible="dialogVisible" :header="`Nouveau règlement - Étape ${dialogStep}/4`" :modal="true"
-                :style="{ width: '80vw' }">
+            <!-- Dialog Création/Edition (4 étapes)-->
+            <Dialog v-model:visible="dialogVisible"
+                :header="isEditing ? `Modifier règlement - Étape ${dialogStep}/4` : `Nouveau règlement - Étape ${dialogStep}/4`"
+                :modal="true" :style="{ width: '80vw' }">
 
                 <!-- Step 1: Client Selection -->
                 <div v-if="dialogStep === 1" class="step-content">
@@ -342,10 +500,11 @@ onMounted(async () => {
                     <div class="form-group">
                         <label>Client *</label>
                         <Dropdown v-model="selectedClient" :options="clients" optionLabel="nom"
-                            placeholder="Sélectionner un client" filter :style="{ width: '100%' }">
+                            placeholder="Sélectionner un client" filter :style="{ width: '100%' }"
+                            :disabled="isEditing">
                             <template #value="slotProps">
                                 <span v-if="slotProps.value">{{ slotProps.value.prenom }} {{ slotProps.value.nom
-                                }}</span>
+                                    }}</span>
                                 <span v-else>{{ slotProps.placeholder }}</span>
                             </template>
                             <template #option="slotProps">

@@ -329,7 +329,7 @@ const goToToday = () => {
                         <div class="stat-content">
                             <span class="stat-value">{{filteredLocations.filter(l => getLocationStatus(l.dateDebut,
                                 l.dateFin) ===
-                                'planifiee').length }}</span>
+                                'planifiee').length}}</span>
                             <span class="stat-label">Planifiées</span>
                         </div>
                     </div>
@@ -340,7 +340,7 @@ const goToToday = () => {
                         <div class="stat-content">
                             <span class="stat-value">{{filteredLocations.filter(l => getLocationStatus(l.dateDebut,
                                 l.dateFin) ===
-                                'en_cours').length }}</span>
+                                'en_cours').length}}</span>
                             <span class="stat-label">En cours</span>
                         </div>
                     </div>
@@ -351,7 +351,7 @@ const goToToday = () => {
                         <div class="stat-content">
                             <span class="stat-value">{{filteredLocations.filter(l => getLocationStatus(l.dateDebut,
                                 l.dateFin) ===
-                                'terminee').length }}</span>
+                                'terminee').length}}</span>
                             <span class="stat-label">Terminées</span>
                         </div>
                     </div>
@@ -359,7 +359,7 @@ const goToToday = () => {
 
                 <div class="month-navigation">
                     <Button icon="pi pi-chevron-left" @click="previousMonth" text rounded />
-                    <h2>{{ months[selectedMonth].label }} {{ selectedYear }}</h2>
+                    <h2>{{ months[selectedMonth]?.label }} {{ selectedYear }}</h2>
                     <Button icon="pi pi-chevron-right" @click="nextMonth" text rounded />
                 </div>
             </div>

@@ -60,6 +60,11 @@ const menuItems = ref([
         ]
     },
     {
+        label: 'Dépenses',
+        icon: 'pi pi-money-bill',
+        command: () => router.push('/expenses')
+    },
+    {
         label: 'Véhicules',
         icon: 'pi pi-car',
         items: [

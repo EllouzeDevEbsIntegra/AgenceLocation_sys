@@ -23,7 +23,7 @@ export const loadCurrentUserRole = async (): Promise<void> => {
             const userData = {
                 id: userDoc.id,
                 ...userDoc.data(),
-                createdAt: userDoc.data().createdAt?.toDate() || new Date()
+                createdAt: userDoc.data()?.createdAt?.toDate() || new Date()
             } as User
 
             currentUserData.value = userData
@@ -37,11 +37,11 @@ export const loadCurrentUserRole = async (): Promise<void> => {
             const snapshot = await getDocs(q)
 
             if (!snapshot.empty) {
-                const userDoc = snapshot.docs[0]
+                const userDoc = snapshot.docs[0]!
                 const userData = {
                     id: userDoc.id,
                     ...userDoc.data(),
-                    createdAt: userDoc.data().createdAt?.toDate() || new Date()
+                    createdAt: userDoc.data()?.createdAt?.toDate() || new Date()
                 } as User
 
                 currentUserData.value = userData

@@ -69,5 +69,10 @@ service cloud.firestore {
     match /payment_allocations/{allocationId} {
       allow read, write: if isSignedIn();
     }
+
+    // Collection expenses - accessible à tous les utilisateurs connectés
+    match /expenses/{expenseId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }
