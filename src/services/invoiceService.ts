@@ -76,7 +76,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
 }
 
 // Calculer les totaux d'une facture
-export const calculateInvoiceTotals = (lines: InvoiceLine[], tvaRate: number = 19, timbreFiscal: number = 1) => {
+export const calculateInvoiceTotals = (lines: InvoiceLine[], tvaRate: number, timbreFiscal: number) => {
     const subtotalHT = lines.reduce((sum, line) => sum + line.totalHT, 0)
     const discountAmount = lines.reduce((sum, line) => sum + line.discountAmount, 0)
     const taxableAmount = subtotalHT - discountAmount

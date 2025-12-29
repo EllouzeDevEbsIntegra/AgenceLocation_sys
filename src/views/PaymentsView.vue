@@ -23,9 +23,12 @@ import {
 import { getAllClients, type Client } from '../services/clientService'
 import { getUnpaidInvoices, updateInvoicePaymentStatus, getInvoiceById, type InvoiceHeader } from '../services/invoiceService'
 import { getAllParameters, type Parameter } from '../services/parameterService'
+import { useAppConfig } from '../composables/useAppConfig'
 
 const toast = useToast()
 const confirm = useConfirm()
+
+const { config, loadConfig, formatCurrency } = useAppConfig()
 
 // Data
 const payments = ref<Payment[]>([])
@@ -384,9 +387,7 @@ const validatePayment = async () => {
     }
 }
 
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('fr-TN', { style: 'currency', currency: 'TND' })
-}
+
 
 const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
@@ -451,8 +452,12 @@ const getAllocatedAmount = (invoiceId: string): number => {
 }
 
 onMounted(async () => {
-    await loadClients()
-    await loadPayments()
+    await Promise.all([
+        loadClients(),
+        loadPayments(),
+        loadParameters(),
+        loadConfig()
+    ])
 })
 </script>
 
@@ -582,7 +587,7 @@ onMounted(async () => {
                         <Column field="amount" header="Montant *">
                             <template #body="slotProps">
                                 <InputNumber v-model="paymentLines[slotProps.index]!.amount" mode="currency"
-                                    currency="TND" locale="fr-TN" />
+                                    :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" />
                             </template>
                         </Column>
                         <Column field="reference" header="Référence">

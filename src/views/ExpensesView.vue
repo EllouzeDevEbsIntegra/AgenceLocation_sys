@@ -28,6 +28,9 @@ import { useConfirm } from 'primevue/useconfirm'
 const toast = useToast()
 const confirm = useConfirm()
 
+import { useAppConfig } from '../composables/useAppConfig'
+const { config, loadConfig, formatCurrency } = useAppConfig()
+
 // Data
 const expenses = ref<Expense[]>([])
 const vehicles = ref<Vehicle[]>([])
@@ -109,6 +112,7 @@ onMounted(async () => {
     loading.value = true
     try {
         await loadParameters()
+        await loadConfig()
         const [expensesData, vehiclesData] = await Promise.all([
             getAllExpenses(),
             getAllVehicles()
@@ -196,9 +200,7 @@ const confirmDeleteExpense = (item: Expense) => {
     })
 }
 
-const formatCurrency = (value: number) => {
-    return value.toLocaleString('fr-TN', { style: 'currency', currency: 'TND' })
-}
+
 
 const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('fr-FR')
@@ -375,8 +377,9 @@ const getSeverity = (cat: string) => {
 
                 <div class="field">
                     <label for="amount">Montant TTC</label>
-                    <InputNumber id="amount" v-model="expense.amount" mode="currency" currency="TND" locale="fr-TN"
-                        required :class="{ 'p-invalid': submitted && !expense.amount }" />
+                    <InputNumber id="amount" v-model="expense.amount" mode="currency" :currency="config.currency"
+                        locale="fr-TN" :minFractionDigits="config.decimals" required
+                        :class="{ 'p-invalid': submitted && !expense.amount }" />
                     <small class="p-error" v-if="submitted && !expense.amount">Le montant est requis.</small>
                 </div>
 

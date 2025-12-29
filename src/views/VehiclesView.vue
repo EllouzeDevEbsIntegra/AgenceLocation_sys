@@ -4,7 +4,10 @@ import { useToast } from 'primevue/usetoast'
 import { getAllVehicles, addVehicle, updateVehicle, deleteVehicle, type Vehicle } from '../services/vehicleService'
 import { getAllModels, type Model } from '../services/modelService'
 import { getAllBrands, type Brand } from '../services/brandService'
+import { useAppConfig } from '../composables/useAppConfig'
 import MainLayout from '../layouts/MainLayout.vue'
+
+const { config, loadConfig, formatCurrency } = useAppConfig()
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -40,7 +43,7 @@ const currentVehicle = ref<Vehicle>({
 })
 
 onMounted(async () => {
-    await Promise.all([loadVehicles(), loadModels(), loadBrands()])
+    await Promise.all([loadVehicles(), loadModels(), loadBrands(), loadConfig()])
 })
 
 const loadVehicles = async () => {
@@ -234,9 +237,7 @@ const formatDate = (date: Date): string => {
                     </Column>
                     <Column field="prixUnitaireHT" header="Prix HT" sortable>
                         <template #body="slotProps">
-                            {{ slotProps.data.prixUnitaireHT.toLocaleString('fr-FR', {
-                                style: 'currency', currency:
-                            'EUR' }) }}
+                            {{ formatCurrency(slotProps.data.prixUnitaireHT) }}
                         </template>
                     </Column>
                     <Column header="Actions" style="width: 10rem">
@@ -290,7 +291,8 @@ const formatDate = (date: Date): string => {
                         <div class="form-group">
                             <label for="prix">Prix unitaire HT</label>
                             <InputNumber id="prix" v-model="currentVehicle.prixUnitaireHT" mode="currency"
-                                currency="EUR" locale="fr-FR" class="w-full" />
+                                :currency="config.currency" :minFractionDigits="config.decimals"
+                                :maxFractionDigits="config.decimals" class="w-full" />
                         </div>
                     </div>
 

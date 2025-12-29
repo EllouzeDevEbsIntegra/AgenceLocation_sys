@@ -23,7 +23,9 @@ import {
 } from '../services/dashboardService'
 import { getAllVehicles, type Vehicle } from '../services/vehicleService'
 import { getAllClients, type Client } from '../services/clientService'
+import { useAppConfig } from '../composables/useAppConfig'
 
+const { config, loadConfig, formatCurrency } = useAppConfig()
 const router = useRouter()
 const loading = ref(true)
 
@@ -128,7 +130,7 @@ onMounted(async () => {
     dateRange.value = [firstDay, today]
 
     // Load filter options
-    const [v, c] = await Promise.all([getAllVehicles(), getAllClients()])
+    const [v, c] = await Promise.all([getAllVehicles(), getAllClients(), loadConfig()])
     vehicles.value = v
     clients.value = c
 
@@ -139,9 +141,7 @@ watch([dateRange, selectedVehicle, selectedClient], () => {
     loadData()
 })
 
-const formatCurrency = (value: number) => {
-    return value.toLocaleString('fr-TN', { style: 'currency', currency: 'TND' })
-}
+
 
 const getClientName = (client: Client) => {
     return (client.typeClient === 'morale' ? client.raisonSociale : `${client.nom} ${client.prenom}`) || 'Client Inconnu'

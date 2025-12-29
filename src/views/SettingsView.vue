@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast'
 import { getAllUsers, createUser, updateUserData, deleteUserAccount, type User } from '../services/userService'
 import {
     getAllParameters, addParameter, updateParameter, deleteParameter, initParameters,
+    getGeneralConfig, saveGeneralConfig, CONFIG_KEYS,
     type Parameter, type ParameterType
 } from '../services/parameterService'
 import MainLayout from '../layouts/MainLayout.vue'
@@ -18,6 +19,7 @@ import Card from 'primevue/card'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import Tag from 'primevue/tag'
+import InputNumber from 'primevue/inputnumber'
 
 const toast = useToast()
 
@@ -41,6 +43,15 @@ const currentParam = ref<Partial<Parameter>>({
 })
 const selectedParam = ref<Parameter | null>(null)
 const activeParamTab = ref(0) // For sub-tabs in parameters
+
+// General Config State
+const generalConfig = ref({
+    currency: 'TND',
+    decimals: 3,
+    vatRate: 19,
+    stampDuty: 1.000
+})
+const configLoading = ref(false)
 
 // Navigation state
 const activeTab = ref('users')
@@ -69,9 +80,48 @@ const roleOptions = [
 ]
 
 onMounted(async () => {
-    await loadUsers()
-    await loadParameters()
+    await Promise.all([
+        loadUsers(),
+        loadParameters(),
+        loadGeneralSettings()
+    ])
 })
+
+const loadGeneralSettings = async () => {
+    try {
+        const config = await getGeneralConfig()
+        const currency = config[CONFIG_KEYS.CURRENCY]
+        const decimals = config[CONFIG_KEYS.DECIMALS]
+        const vatRate = config[CONFIG_KEYS.VAT_RATE]
+        const stampDuty = config[CONFIG_KEYS.STAMP_DUTY]
+
+        if (currency) generalConfig.value.currency = currency
+        if (decimals) generalConfig.value.decimals = parseInt(decimals)
+        if (vatRate) generalConfig.value.vatRate = parseFloat(vatRate)
+        if (stampDuty) generalConfig.value.stampDuty = parseFloat(stampDuty)
+    } catch (error) {
+        console.error('Error loading general settings:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la configuration générale', life: 3000 })
+    }
+}
+
+const saveGeneralSettings = async () => {
+    configLoading.value = true
+    try {
+        await saveGeneralConfig({
+            [CONFIG_KEYS.CURRENCY]: generalConfig.value.currency,
+            [CONFIG_KEYS.DECIMALS]: String(generalConfig.value.decimals),
+            [CONFIG_KEYS.VAT_RATE]: String(generalConfig.value.vatRate),
+            [CONFIG_KEYS.STAMP_DUTY]: String(generalConfig.value.stampDuty)
+        })
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Configuration enregistrée', life: 3000 })
+    } catch (error) {
+        console.error('Error saving general settings:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'enregistrer la configuration', life: 3000 })
+    } finally {
+        configLoading.value = false
+    }
+}
 
 // --- Users Logic ---
 
@@ -501,11 +551,45 @@ const getParentLabel = (parentValue: string, parentType: ParameterType) => {
                     <!-- General Tab -->
                     <div v-if="activeTab === 'general'" class="tab-content">
                         <Card>
+                            <template #title>Configuration Générale</template>
                             <template #content>
                                 <div class="general-content">
-                                    <p class="m-0">
-                                        Autres paramètres à venir...
-                                    </p>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label for="currency">Devise</label>
+                                            <InputText id="currency" v-model="generalConfig.currency"
+                                                placeholder="Ex: TND, EUR" />
+                                            <small class="text-gray-500">Symbole monétaire utilisé dans
+                                                l'application</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="decimals">Décimales</label>
+                                            <InputNumber id="decimals" v-model="generalConfig.decimals" :min="0"
+                                                :max="4" showButtons />
+                                            <small class="text-gray-500">Nombre de chiffres après la virgule (0-4)</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="vatRate">Taux TVA (%)</label>
+                                            <InputNumber id="vatRate" v-model="generalConfig.vatRate" :min="0"
+                                                :max="100" suffix="%" :minFractionDigits="0" :maxFractionDigits="2" />
+                                            <small class="text-gray-500">Taux de TVA par défaut</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="stampDuty">Timbre Fiscal</label>
+                                            <InputNumber id="stampDuty" v-model="generalConfig.stampDuty" :min="0"
+                                                mode="currency" :currency="generalConfig.currency" locale="fr-TN"
+                                                :minFractionDigits="generalConfig.decimals" />
+                                            <small class="text-gray-500">Montant du timbre fiscal par défaut</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex justify-end mt-4">
+                                        <Button label="Enregistrer" icon="pi pi-save" @click="saveGeneralSettings"
+                                            :loading="configLoading" />
+                                    </div>
                                 </div>
                             </template>
                         </Card>

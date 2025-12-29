@@ -28,6 +28,9 @@ import { useConfirm } from 'primevue/useconfirm'
 const toast = useToast()
 const confirm = useConfirm()
 
+import { useAppConfig } from '../composables/useAppConfig'
+const { config, loadConfig, formatCurrency } = useAppConfig()
+
 const invoices = ref<InvoiceHeader[]>([])
 const clients = ref<Client[]>([])
 const vehicles = ref<Vehicle[]>([])
@@ -51,7 +54,8 @@ onMounted(async () => {
         loadClients(),
         loadVehicles(),
         loadModels(),
-        loadBrands()
+        loadBrands(),
+        loadConfig()
     ])
 })
 
@@ -554,10 +558,10 @@ const totals = computed(() => {
     const subtotalHT = selectedLocations.value.reduce((sum, loc) => sum + loc.totalHT, 0)
     const discountAmount = invoiceLines.value.reduce((sum, line) => sum + line.discountAmount, 0)
     const taxableAmount = subtotalHT - discountAmount
-    const tvaRate = 19
+    const tvaRate = config.value.vatRate
     const tvaAmount = taxableAmount * (tvaRate / 100)
     const totalTTC = taxableAmount + tvaAmount
-    const timbreFiscal = 1.0
+    const timbreFiscal = config.value.stampDuty
     const netAPayer = totalTTC + timbreFiscal
 
     return {
@@ -659,9 +663,7 @@ const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
 }
 
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('fr-TN', { style: 'currency', currency: 'TND' })
-}
+
 
 const numberToWords = (num: number): string => {
     if (num === 0) return 'zéro'

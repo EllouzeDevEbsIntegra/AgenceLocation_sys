@@ -1,7 +1,7 @@
 import { db } from '../firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore'
 
-export type ParameterType = 'caution_type' | 'anomaly_type' | 'payment_method' | 'expense_category' | 'expense_type'
+export type ParameterType = 'caution_type' | 'anomaly_type' | 'payment_method' | 'expense_category' | 'expense_type' | 'general_config'
 
 export interface Parameter {
     id?: string
@@ -10,6 +10,13 @@ export interface Parameter {
     value: string
     parentValue?: string // For hierarchical data (e.g. expense types belonging to a category)
     order?: number
+}
+
+export const CONFIG_KEYS = {
+    CURRENCY: 'currency',
+    DECIMALS: 'decimals',
+    VAT_RATE: 'vat_rate',
+    STAMP_DUTY: 'stamp_duty'
 }
 
 const COLLECTION_NAME = 'parameters'
@@ -59,6 +66,33 @@ export const deleteParameter = async (id: string): Promise<void> => {
     } catch (error) {
         console.error('Error deleting parameter:', error)
         throw error
+    }
+}
+
+// General Config Helpers
+export const getGeneralConfig = async () => {
+    const params = await getAllParameters('general_config')
+    const config: Record<string, string> = {}
+    params.forEach(p => {
+        config[p.label] = p.value
+    })
+    return config
+}
+
+export const saveGeneralConfig = async (config: Record<string, string>) => {
+    const currentParams = await getAllParameters('general_config')
+
+    for (const [key, value] of Object.entries(config)) {
+        const existing = currentParams.find(p => p.label === key)
+        if (existing && existing.id) {
+            await updateParameter(existing.id, { value: String(value) })
+        } else {
+            await addParameter({
+                type: 'general_config',
+                label: key,
+                value: String(value)
+            })
+        }
     }
 }
 
@@ -113,6 +147,13 @@ export const initParameters = async () => {
         { type: 'expense_type', label: 'Taxe', value: 'taxe', parentValue: 'vehicule' },
         { type: 'expense_type', label: 'Réparation', value: 'reparation', parentValue: 'vehicule' },
         { type: 'expense_type', label: 'Autre', value: 'autre_vehicule', parentValue: 'vehicule' },
+
+
+        // General Config
+        { type: 'general_config', label: 'currency', value: 'TND' },
+        { type: 'general_config', label: 'decimals', value: '3' },
+        { type: 'general_config', label: 'vat_rate', value: '19' },
+        { type: 'general_config', label: 'stamp_duty', value: '1.0' },
 
         // Expense Types - Divers
         { type: 'expense_type', label: 'Fourniture Bureau', value: 'fourniture_bureau', parentValue: 'divers' },

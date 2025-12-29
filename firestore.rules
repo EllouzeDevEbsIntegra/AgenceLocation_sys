@@ -74,5 +74,10 @@ service cloud.firestore {
     match /expenses/{expenseId} {
       allow read, write: if isSignedIn();
     }
+
+    // Collection parameters - accessible à tous les utilisateurs connectés
+    match /parameters/{parameterId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }

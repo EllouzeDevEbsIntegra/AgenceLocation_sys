@@ -27,6 +27,10 @@ import Textarea from 'primevue/textarea'
 import Divider from 'primevue/divider'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
+import {
+    getAllParameters, type Parameter
+} from '../services/parameterService'
+import { useAppConfig } from '../composables/useAppConfig'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -72,27 +76,10 @@ const currentLocation = ref<Location>({
     statutFacturation: 'Ouvert'
 })
 
-import {
-    getAllParameters, type Parameter
-} from '../services/parameterService'
-
-// ... existing imports ...
+const { config, loadConfig, formatCurrency } = useAppConfig()
 
 const cautionTypes = ref<Parameter[]>([])
 const anomalyTypes = ref<Parameter[]>([])
-
-// ... existing code ...
-
-onMounted(async () => {
-    await Promise.all([
-        loadLocations(),
-        loadClients(),
-        loadVehicles(),
-        loadModels(),
-        loadBrands(),
-        loadParameters()
-    ])
-})
 
 const loadParameters = async () => {
     try {
@@ -105,13 +92,18 @@ const loadParameters = async () => {
     }
 }
 
-// ... existing code ...
+onMounted(async () => {
+    await Promise.all([
+        loadLocations(),
+        loadClients(),
+        loadVehicles(),
+        loadModels(),
+        loadBrands(),
+        loadParameters(),
+        loadConfig()
+    ])
+})
 
-// In template for anomaly dropdowns:
-// Replace :options="anomalyTypes" with :options="anomalyTypes" optionLabel="label" optionValue="value"
-
-
-// Calculer les dates désactivées pour le véhicule sélectionné
 const disabledDates = computed(() => {
     if (!currentLocation.value.vehicleId) {
         return []
@@ -362,9 +354,7 @@ const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
 }
 
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('fr-TN', { style: 'currency', currency: 'TND' })
-}
+
 
 const getStatusLabel = (status: LocationStatus): string => {
     const labels = {
@@ -417,7 +407,11 @@ const generateInvoice = async (location: Location) => {
             totalHT: location.totalHT
         }
 
-        const totals = calculateInvoiceTotals([invoiceLine as unknown as InvoiceLine])
+        const totals = calculateInvoiceTotals(
+            [invoiceLine as unknown as InvoiceLine],
+            config.value.vatRate,
+            config.value.stampDuty
+        )
         const invoiceHeader: Omit<InvoiceHeader, 'id'> = {
             invoiceNumber,
             invoiceDate: new Date(),
@@ -613,7 +607,7 @@ const generateInvoice = async (location: Location) => {
                         <div class="form-group">
                             <label for="montantCaution">Montant caution</label>
                             <InputNumber id="montantCaution" v-model="currentLocation.montantCaution" mode="currency"
-                                currency="EUR" locale="fr-FR" class="w-full" />
+                                :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" class="w-full" />
                         </div>
                     </div>
 
@@ -621,7 +615,7 @@ const generateInvoice = async (location: Location) => {
                         <div class="form-group">
                             <label for="prixHT">Prix unitaire HT (/ jour)</label>
                             <InputNumber id="prixHT" v-model="currentLocation.prixUnitaireHT" mode="currency"
-                                currency="EUR" locale="fr-FR" class="w-full" />
+                                :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" class="w-full" />
                         </div>
                         <div class="form-group">
                             <label>Nombre de jours (calculé)</label>
@@ -632,13 +626,13 @@ const generateInvoice = async (location: Location) => {
                     <div class="form-row">
                         <div class="form-group">
                             <label>Total HT (calculé)</label>
-                            <InputNumber v-model="currentLocation.totalHT" mode="currency" currency="EUR" locale="fr-FR"
-                                :disabled="true" class="w-full" />
+                            <InputNumber v-model="currentLocation.totalHT" mode="currency" :currency="config.currency" locale="fr-TN"
+                                :minFractionDigits="config.decimals" :disabled="true" class="w-full" />
                         </div>
                         <div class="form-group">
-                            <label>Total TTC - TVA 19% (calculé)</label>
-                            <InputNumber v-model="currentLocation.totalTTC" mode="currency" currency="EUR"
-                                locale="fr-FR" :disabled="true" class="w-full" />
+                            <label>Total TTC - TVA {{ config.vatRate }}% (calculé)</label>
+                            <InputNumber v-model="currentLocation.totalTTC" mode="currency" :currency="config.currency"
+                                locale="fr-TN" :minFractionDigits="config.decimals" :disabled="true" class="w-full" />
                         </div>
                     </div>
 

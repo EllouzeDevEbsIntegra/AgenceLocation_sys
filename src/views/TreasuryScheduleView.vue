@@ -11,6 +11,9 @@ import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
 import { getUpcomingDueDates, getOverdueDueDates, updatePaymentLineStatus, type PaymentLine } from '../services/paymentService'
 import { getAllClients, type Client } from '../services/clientService'
+import { useAppConfig } from '../composables/useAppConfig'
+
+const { config, loadConfig, formatCurrency } = useAppConfig()
 
 const toast = useToast()
 
@@ -79,9 +82,7 @@ const updateStatus = async (line: PaymentLine, status: 'encaisse' | 'rejete') =>
     }
 }
 
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('fr-TN', { style: 'currency', currency: 'TND' })
-}
+
 
 const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
@@ -103,8 +104,11 @@ const getStatusSeverity = (status: string, dueDate: Date): string => {
 }
 
 onMounted(async () => {
-    await loadClients()
-    await loadDueDates()
+    await Promise.all([
+        loadClients(),
+        loadDueDates(),
+        loadConfig()
+    ])
 })
 </script>
 
