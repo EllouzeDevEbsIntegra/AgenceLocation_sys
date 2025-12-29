@@ -10,7 +10,7 @@ export type MiscExpenseType = 'fourniture_bureau' | 'informatique' | 'nettoyage'
 export interface Expense {
     id?: string
     date: Date
-    amount: number // Montant TTC
+    amount: number | null // Montant TTC
     category: ExpenseCategory
     type: FixedExpenseType | VehicleExpenseType | MiscExpenseType
     description: string

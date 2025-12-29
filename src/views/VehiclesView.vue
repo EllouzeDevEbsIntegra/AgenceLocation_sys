@@ -203,10 +203,6 @@ const handleDelete = async (vehicle: Vehicle) => {
 const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
 }
-
-const handleFocus = (event: Event) => {
-    (event.target as HTMLInputElement).select()
-}
 </script>
 
 <template>
@@ -296,7 +292,7 @@ const handleFocus = (event: Event) => {
                             <InputNumber id="prix" v-model="currentVehicle.prixUnitaireHT" mode="currency"
                                 :currency="config.currency" :minFractionDigits="config.decimals"
                                 :maxFractionDigits="config.decimals" class="w-full"
-                                @focus="handleFocus" />
+                                @focus="currentVehicle.prixUnitaireHT = null" />
                         </div>
                     </div>
 

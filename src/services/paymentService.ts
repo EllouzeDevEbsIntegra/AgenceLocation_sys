@@ -24,7 +24,7 @@ export interface PaymentLine {
     id?: string
     paymentId: string
     paymentMethod: PaymentMethod
-    amount: number
+    amount: number | null
     reference: string  // N° chèque, traite, virement
     bankName: string
     dueDate?: Date  // Pour traites et chèques différés

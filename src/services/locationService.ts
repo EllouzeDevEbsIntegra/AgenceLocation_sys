@@ -39,10 +39,10 @@ export interface Location {
 
     // Caution
     typeCaution: CautionType
-    montantCaution: number
+    montantCaution: number | null
 
     // Tarification
-    prixUnitaireHT: number
+    prixUnitaireHT: number | null
     nombreJours: number  // Calculé
     totalHT: number  // Calculé
     totalTTC: number  // Calculé (TVA 19%)

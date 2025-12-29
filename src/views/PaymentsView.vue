@@ -76,8 +76,29 @@ const totalInvoices = computed(() =>
     selectedInvoices.value.reduce((sum, inv) => sum + (inv.remainingAmount || inv.totalTTC), 0)
 )
 
+const formatDate = (date: Date | string) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleDateString('fr-FR')
+}
+
+
+
+
+
+
+
+const openDetailsDialog = (payment: Payment) => {
+    selectedPayment.value = payment
+    detailsDialogVisible.value = true
+    // We need to load allocations and invoices for this payment
+    loadPaymentDetails(payment)
+}
+
+
+
+
 const totalPaymentLines = computed(() =>
-    paymentLines.value.reduce((sum, line) => sum + line.amount, 0)
+    paymentLines.value.reduce((sum, line) => sum + (line.amount || 0), 0)
 )
 
 const isAmountValid = computed(() =>
@@ -146,7 +167,32 @@ const openCreateDialog = async () => {
     dialogVisible.value = true
 }
 
+const loadPaymentDetails = async (payment: Payment) => {
+    if (!payment.id) return
+    try {
+        loading.value = true
+        selectedPaymentLines.value = await getPaymentLines(payment.id)
+        selectedPaymentAllocations.value = await getPaymentAllocations(payment.id)
+        
+        // Load invoices
+        const invoiceIds = selectedPaymentAllocations.value.map(a => a.invoiceId)
+        if (invoiceIds.length > 0) {
+            const promises = invoiceIds.map(id => getInvoiceById(id))
+            const loadedInvoices = await Promise.all(promises)
+            allocatedInvoices.value = loadedInvoices.filter((inv): inv is InvoiceHeader => !!inv)
+        } else {
+            allocatedInvoices.value = []
+        }
+    } catch (error) {
+        console.error('Error loading payment details:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les détails', life: 3000 })
+    } finally {
+        loading.value = false
+    }
+}
+
 const openEditDialog = async (payment: Payment) => {
+
     loading.value = true
     try {
         isEditing.value = true
@@ -381,18 +427,10 @@ const validatePayment = async () => {
         await loadPayments()
     } catch (error) {
         console.error('Error saving payment:', error)
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de l\'enregistrement', life: 3000 })
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'enregistrer le règlement', life: 3000 })
     } finally {
         loading.value = false
     }
-}
-
-const handleFocus = (event: Event) => {
-    (event.target as HTMLInputElement).select()
-}
-
-const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString('fr-FR')
 }
 
 const getClientName = (clientId: string): string => {
@@ -422,31 +460,7 @@ const getPaymentLineStatusSeverity = (status: string): 'warning' | 'success' | '
     return severities[status] || 'warning'
 }
 
-// Open details dialog - FIXED: fetch invoices by ID from Firestore
-const openDetailsDialog = async (payment: Payment) => {
-    selectedPayment.value = payment
-    try {
-        // Load payment lines
-        selectedPaymentLines.value = await getPaymentLines(payment.id!)
 
-        // Load payment allocations
-        selectedPaymentAllocations.value = await getPaymentAllocations(payment.id!)
-
-        // Load invoices for allocations - fetch each invoice by ID from Firestore
-        allocatedInvoices.value = []
-        for (const allocation of selectedPaymentAllocations.value) {
-            const invoice = await getInvoiceById(allocation.invoiceId)
-            if (invoice) {
-                allocatedInvoices.value.push(invoice)
-            }
-        }
-
-        detailsDialogVisible.value = true
-    } catch (error) {
-        console.error('Error loading payment details:', error)
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les détails', life: 3000 })
-    }
-}
 
 const getAllocatedAmount = (invoiceId: string): number => {
     const allocation = selectedPaymentAllocations.value.find(a => a.invoiceId === invoiceId)
@@ -604,7 +618,7 @@ onMounted(async () => {
                             <template #body="slotProps">
                                 <InputNumber v-model="paymentLines[slotProps.index]!.amount" mode="currency"
                                     :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals"
-                                    class="w-full" @focus="handleFocus" />
+                                    class="w-full" @focus="paymentLines[slotProps.index]!.amount = null" />
                             </template>
                         </Column>
                         <Column header="Actions">

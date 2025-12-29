@@ -31,6 +31,92 @@ const confirm = useConfirm()
 import { useAppConfig } from '../composables/useAppConfig'
 const { config, loadConfig, formatCurrency } = useAppConfig()
 
+const formatDate = (date: Date | string) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleDateString('fr-FR')
+}
+
+const numberToWords = (num: number): string => {
+    if (num === 0) return 'zéro'
+    const ones = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf']
+    const teens = ['dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf']
+    const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix']
+
+    const convert = (n: number): string => {
+        if (n < 10) return ones[n]!
+        if (n < 20) return teens[n - 10]!
+        if (n < 100) {
+            const ten = Math.floor(n / 10)
+            const one = n % 10
+            if (ten === 7 || ten === 9) {
+                return tens[ten - 1] + '-' + teens[one]
+            }
+            return tens[ten] + (one ? '-' + ones[one] : '')
+        }
+        if (n < 1000) {
+            const hundred = Math.floor(n / 100)
+            const rest = n % 100
+            return (hundred > 1 ? ones[hundred] + ' ' : '') + 'cent' + (rest ? ' ' + convert(rest) : '')
+        }
+        if (n < 1000000) {
+            const thousand = Math.floor(n / 1000)
+            const rest = n % 1000
+            return (thousand > 1 ? convert(thousand) + ' ' : '') + 'mille' + (rest ? ' ' + convert(rest) : '')
+        }
+        const million = Math.floor(n / 1000000)
+        const rest = n % 1000000
+        return convert(million) + ' million' + (million > 1 ? 's' : '') + (rest ? ' ' + convert(rest) : '')
+    }
+
+    const integerPart = Math.floor(num)
+    const decimalPart = Math.round((num - integerPart) * 1000)
+
+    let result = convert(integerPart) + ' dinar' + (integerPart > 1 ? 's' : '')
+    if (decimalPart > 0) {
+        result += ' et ' + convert(decimalPart) + ' millime' + (decimalPart > 1 ? 's' : '')
+    }
+    return result
+}
+
+const getStatusLabel = (status: string): string => {
+    const labels: Record<string, string> = {
+        'draft': 'Brouillon',
+        'validated': 'Validée',
+        'paid': 'Payée',
+        'cancelled': 'Annulée'
+    }
+    return labels[status] || status
+}
+
+const getStatusSeverity = (status: string): 'secondary' | 'info' | 'success' | 'danger' => {
+    const severities: Record<string, 'secondary' | 'info' | 'success' | 'danger'> = {
+        'draft': 'secondary',
+        'validated': 'info',
+        'paid': 'success',
+        'cancelled': 'danger'
+    }
+    return severities[status] || 'secondary'
+}
+
+const getPaymentStatusLabel = (status: string): string => {
+    const labels: Record<string, string> = {
+        'non_regle': 'Non réglé',
+        'partiellement_regle': 'Partiel',
+        'regle': 'Réglé'
+    }
+    return labels[status] || status
+}
+
+const getPaymentStatusSeverity = (status: string): 'danger' | 'warning' | 'success' => {
+    const severities: Record<string, 'danger' | 'warning' | 'success'> = {
+        'non_regle': 'danger',
+        'partiellement_regle': 'warning',
+        'regle': 'success'
+    }
+    return severities[status] || 'danger'
+}
+
+
 const invoices = ref<InvoiceHeader[]>([])
 const clients = ref<Client[]>([])
 const vehicles = ref<Vehicle[]>([])
@@ -603,7 +689,10 @@ const validateInvoiceCreation = async () => {
             ? (client.matriculeFiscale || 'N/A')
             : (client.numeroCIN || 'N/A')
 
-        const lines: Omit<InvoiceLine, 'id' | 'invoiceId'>[] = invoiceLines.value
+        const lines: Omit<InvoiceLine, 'id' | 'invoiceId'>[] = invoiceLines.value.map(l => ({
+            ...l,
+            unitPrice: l.unitPrice || 0
+        }))
 
         const invoiceHeader: Omit<InvoiceHeader, 'id'> = {
             invoiceNumber,
@@ -657,97 +746,6 @@ const validateInvoiceCreation = async () => {
     } finally {
         loading.value = false
     }
-}
-
-const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString('fr-FR')
-}
-
-const handleFocus = (event: Event) => {
-    (event.target as HTMLInputElement).select()
-}
-
-
-
-const numberToWords = (num: number): string => {
-    if (num === 0) return 'zéro'
-
-    const ones = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf']
-    const teens = ['dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf']
-    const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix']
-
-    const convert = (n: number): string => {
-        if (n < 10) return ones[n]!
-        if (n < 20) return teens[n - 10]!
-        if (n < 100) {
-            const ten = Math.floor(n / 10)
-            const one = n % 10
-            if (ten === 7 || ten === 9) {
-                return tens[ten - 1] + '-' + teens[one]
-            }
-            return tens[ten] + (one ? '-' + ones[one] : '')
-        }
-        if (n < 1000) {
-            const hundred = Math.floor(n / 100)
-            const rest = n % 100
-            return (hundred > 1 ? ones[hundred] + ' ' : '') + 'cent' + (rest ? ' ' + convert(rest) : '')
-        }
-        if (n < 1000000) {
-            const thousand = Math.floor(n / 1000)
-            const rest = n % 1000
-            return (thousand > 1 ? convert(thousand) + ' ' : '') + 'mille' + (rest ? ' ' + convert(rest) : '')
-        }
-        const million = Math.floor(n / 1000000)
-        const rest = n % 1000000
-        return convert(million) + ' million' + (million > 1 ? 's' : '') + (rest ? ' ' + convert(rest) : '')
-    }
-
-    const integerPart = Math.floor(num)
-    const decimalPart = Math.round((num - integerPart) * 1000)
-
-    let result = convert(integerPart) + ' dinar' + (integerPart > 1 ? 's' : '')
-    if (decimalPart > 0) {
-        result += ' et ' + convert(decimalPart) + ' millime' + (decimalPart > 1 ? 's' : '')
-    }
-    return result
-}
-
-const getStatusLabel = (status: string): string => {
-    const labels: Record<string, string> = {
-        'draft': 'Brouillon',
-        'validated': 'Validée',
-        'paid': 'Payée',
-        'cancelled': 'Annulée'
-    }
-    return labels[status] || status
-}
-
-const getStatusSeverity = (status: string): 'secondary' | 'info' | 'success' | 'danger' => {
-    const severities: Record<string, 'secondary' | 'info' | 'success' | 'danger'> = {
-        'draft': 'secondary',
-        'validated': 'info',
-        'paid': 'success',
-        'cancelled': 'danger'
-    }
-    return severities[status] || 'secondary'
-}
-
-const getPaymentStatusLabel = (status: string): string => {
-    const labels: Record<string, string> = {
-        'non_regle': 'Non réglé',
-        'partiellement_regle': 'Partiel',
-        'regle': 'Réglé'
-    }
-    return labels[status] || status
-}
-
-const getPaymentStatusSeverity = (status: string): 'danger' | 'warning' | 'success' => {
-    const severities: Record<string, 'danger' | 'warning' | 'success'> = {
-        'non_regle': 'danger',
-        'partiellement_regle': 'warning',
-        'regle': 'success'
-    }
-    return severities[status] || 'danger'
 }
 </script>
 
@@ -844,21 +842,6 @@ const getPaymentStatusSeverity = (status: string): 'danger' | 'warning' | 'succe
                                 </template>
                             </Column>
                             <Column field="quantity" header="Qté"></Column>
-                            <Column field="unitPrice" header="PU HT">
-                                <template #body="slotProps">
-                                    {{ formatCurrency(slotProps.data.unitPrice) }}
-                                </template>
-                            </Column>
-                            <Column field="discountPercent" header="Remise">
-                                <template #body="slotProps">
-                                    {{ slotProps.data.discountPercent }}%
-                                </template>
-                            </Column>
-                            <Column field="totalHT" header="Total HT">
-                                <template #body="slotProps">
-                                    {{ formatCurrency(slotProps.data.totalHT) }}
-                                </template>
-                            </Column>
                         </DataTable>
                     </div>
 
@@ -981,10 +964,6 @@ const getPaymentStatusSeverity = (status: string): 'danger' | 'warning' | 'succe
                             <Column field="totalHT" header="Total HT">
                                 <template #body="slotProps">
                                     {{ formatCurrency(slotProps.data.totalHT) }}
-                                        formatCurrency(
-                                            invoiceLines.find(l => l.locationId === slotProps.data.id)?.totalHT || 0
-                                        )
-                                    }}
                                 </template>
                             </Column>
                         </DataTable>

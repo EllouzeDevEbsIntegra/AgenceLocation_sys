@@ -12,7 +12,7 @@ export interface Vehicle {
     dateVisite: Date
     dateVignette: Date
     actif: boolean
-    prixUnitaireHT: number
+    prixUnitaireHT: number | null
 }
 
 const COLLECTION_NAME = 'vehicles'

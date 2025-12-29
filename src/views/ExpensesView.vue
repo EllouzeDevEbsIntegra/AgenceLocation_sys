@@ -90,10 +90,10 @@ const expenseTypes = computed(() => {
 })
 
 // KPIs
-const totalExpenses = computed(() => filteredExpenses.value.reduce((sum, item) => sum + item.amount, 0))
-const fixedExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'fixe').reduce((sum, item) => sum + item.amount, 0))
-const vehicleExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'vehicule').reduce((sum, item) => sum + item.amount, 0))
-const miscExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'divers').reduce((sum, item) => sum + item.amount, 0))
+const totalExpenses = computed(() => filteredExpenses.value.reduce((sum, item) => sum + (item.amount || 0), 0))
+const fixedExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'fixe').reduce((sum, item) => sum + (item.amount || 0), 0))
+const vehicleExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'vehicule').reduce((sum, item) => sum + (item.amount || 0), 0))
+const miscExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'divers').reduce((sum, item) => sum + (item.amount || 0), 0))
 
 // Methods
 const loadParameters = async () => {
@@ -182,9 +182,7 @@ const saveExpense = async () => {
     }
 }
 
-const handleFocus = (event: Event) => {
-    (event.target as HTMLInputElement).select()
-}
+
 
 const confirmDeleteExpense = (item: Expense) => {
     confirm.require({
@@ -205,8 +203,6 @@ const confirmDeleteExpense = (item: Expense) => {
         }
     })
 }
-
-
 
 const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('fr-FR')
@@ -337,21 +333,31 @@ const getSeverity = (cat: string) => {
                     <Column field="description" header="Description"></Column>
                     <Column field="amount" header="Montant" sortable>
                         <template #body="slotProps">
-                            <span class="amount">{{ formatCurrency(slotProps.data.amount) }}</span>
+                            {{ formatCurrency(slotProps.data.amount) }}
                         </template>
                     </Column>
                     <Column header="Actions" :exportable="false" style="min-width:8rem">
                         <template #body="slotProps">
-                            <Button icon="pi pi-pencil" outlined rounded class="mr-2"
-                                @click="editExpense(slotProps.data)" />
-                            <Button icon="pi pi-trash" outlined rounded severity="danger"
-                                @click="confirmDeleteExpense(slotProps.data)" />
+                            <Button icon="pi pi-pencil" class="p-button-rounded p-button-success mr-2" @click="editExpense(slotProps.data)" />
+                            <Button icon="pi pi-trash" class="p-button-rounded p-button-warning" @click="confirmDeleteExpense(slotProps.data)" />
                         </template>
                     </Column>
                 </DataTable>
             </div>
-                </div>
 
+            <Dialog v-model:visible="expenseDialog" :style="{width: '450px'}" header="Détails de la Dépense" :modal="true" class="p-fluid">
+                <div class="field">
+                    <label for="date">Date</label>
+                    <Calendar id="date" v-model="expense.date" dateFormat="dd/mm/yy" required :class="{'p-invalid': submitted && !expense.date}" />
+                </div>
+                <div class="field">
+                    <label for="amount">Montant</label>
+                    <InputNumber id="amount" v-model="expense.amount" mode="currency" :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" required :class="{'p-invalid': submitted && !expense.amount}" @focus="expense.amount = null" />
+                </div>
+                <div class="field">
+                    <label for="category">Catégorie</label>
+                    <Dropdown id="category" v-model="expense.category" :options="categories" optionLabel="label" optionValue="value" required :class="{'p-invalid': submitted && !expense.category}" />
+                </div>
                 <div class="field">
                     <label for="type">Type de Dépense</label>
                     <Dropdown id="type" v-model="expense.type" :options="expenseTypes" optionLabel="label"
@@ -363,6 +369,7 @@ const getSeverity = (cat: string) => {
                     <Dropdown id="vehicle" v-model="expense.vehicleId" :options="vehicles" optionLabel="immatriculation"
                         optionValue="id" placeholder="Sélectionner un véhicule" filter required
                         :class="{ 'p-invalid': submitted && !expense.vehicleId }" />
+                    <label for="paymentMethod" class="mt-3">Mode de Paiement</label>
                     <Dropdown id="paymentMethod" v-model="expense.paymentMethod" :options="paymentMethods"
                         optionLabel="label" optionValue="value" required />
                 </div>
