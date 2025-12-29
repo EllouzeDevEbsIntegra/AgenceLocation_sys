@@ -459,6 +459,10 @@ const generateInvoice = async (location: Location) => {
         loading.value = false
     }
 }
+
+const handleFocus = (event: Event) => {
+    (event.target as HTMLInputElement).select()
+}
 </script>
 
 <template>
@@ -607,7 +611,8 @@ const generateInvoice = async (location: Location) => {
                         <div class="form-group">
                             <label for="montantCaution">Montant caution</label>
                             <InputNumber id="montantCaution" v-model="currentLocation.montantCaution" mode="currency"
-                                :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" class="w-full" />
+                                :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" class="w-full"
+                                @focus="handleFocus" />
                         </div>
                     </div>
 
@@ -615,7 +620,8 @@ const generateInvoice = async (location: Location) => {
                         <div class="form-group">
                             <label for="prixHT">Prix unitaire HT (/ jour)</label>
                             <InputNumber id="prixHT" v-model="currentLocation.prixUnitaireHT" mode="currency"
-                                :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" class="w-full" />
+                                :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" class="w-full"
+                                @focus="handleFocus" />
                         </div>
                         <div class="form-group">
                             <label>Nombre de jours (calculé)</label>

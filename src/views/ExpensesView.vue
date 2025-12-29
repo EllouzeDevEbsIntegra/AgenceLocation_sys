@@ -177,7 +177,13 @@ const saveExpense = async () => {
     } catch (error) {
         console.error(error)
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue', life: 3000 })
+    } finally {
+        loading.value = false
     }
+}
+
+const handleFocus = (event: Event) => {
+    (event.target as HTMLInputElement).select()
 }
 
 const confirmDeleteExpense = (item: Expense) => {
@@ -344,21 +350,6 @@ const getSeverity = (cat: string) => {
                     </Column>
                 </DataTable>
             </div>
-
-            <!-- Dialog -->
-            <Dialog v-model:visible="expenseDialog" :style="{ width: '500px' }" header="Détails de la Dépense"
-                :modal="true" class="p-fluid">
-                <div class="field">
-                    <label for="date">Date</label>
-                    <Calendar id="date" v-model="expense.date" dateFormat="dd/mm/yy" :showIcon="true" required
-                        :class="{ 'p-invalid': submitted && !expense.date }" />
-                    <small class="p-error" v-if="submitted && !expense.date">La date est requise.</small>
-                </div>
-
-                <div class="field">
-                    <label for="category">Catégorie</label>
-                    <Dropdown id="category" v-model="expense.category" :options="categories" optionLabel="label"
-                        optionValue="value" required :class="{ 'p-invalid': submitted && !expense.category }" />
                 </div>
 
                 <div class="field">
@@ -372,19 +363,6 @@ const getSeverity = (cat: string) => {
                     <Dropdown id="vehicle" v-model="expense.vehicleId" :options="vehicles" optionLabel="immatriculation"
                         optionValue="id" placeholder="Sélectionner un véhicule" filter required
                         :class="{ 'p-invalid': submitted && !expense.vehicleId }" />
-                    <small class="p-error" v-if="submitted && !expense.vehicleId">Le véhicule est requis.</small>
-                </div>
-
-                <div class="field">
-                    <label for="amount">Montant TTC</label>
-                    <InputNumber id="amount" v-model="expense.amount" mode="currency" :currency="config.currency"
-                        locale="fr-TN" :minFractionDigits="config.decimals" required
-                        :class="{ 'p-invalid': submitted && !expense.amount }" />
-                    <small class="p-error" v-if="submitted && !expense.amount">Le montant est requis.</small>
-                </div>
-
-                <div class="field">
-                    <label for="paymentMethod">Mode de Paiement</label>
                     <Dropdown id="paymentMethod" v-model="expense.paymentMethod" :options="paymentMethods"
                         optionLabel="label" optionValue="value" required />
                 </div>

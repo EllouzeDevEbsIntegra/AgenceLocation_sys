@@ -663,6 +663,10 @@ const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
 }
 
+const handleFocus = (event: Event) => {
+    (event.target as HTMLInputElement).select()
+}
+
 
 
 const numberToWords = (num: number): string => {
@@ -977,17 +981,6 @@ const getPaymentStatusSeverity = (status: string): 'danger' | 'warning' | 'succe
                             <Column field="totalHT" header="Total HT">
                                 <template #body="slotProps">
                                     {{ formatCurrency(slotProps.data.totalHT) }}
-                                </template>
-                            </Column>
-                            <Column header="Remise (%)" style="width: 120px">
-                                <template #body="slotProps">
-                                    <InputNumber v-model="discounts[slotProps.data.id]" :min="0" :max="100" suffix="%"
-                                        class="w-full" size="small" />
-                                </template>
-                            </Column>
-                            <Column header="Total Ligne">
-                                <template #body="slotProps">
-                                    {{
                                         formatCurrency(
                                             invoiceLines.find(l => l.locationId === slotProps.data.id)?.totalHT || 0
                                         )

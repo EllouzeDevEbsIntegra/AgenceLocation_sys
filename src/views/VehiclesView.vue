@@ -200,9 +200,12 @@ const handleDelete = async (vehicle: Vehicle) => {
     }
 }
 
-// Formater les dates pour l'affichage
 const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
+}
+
+const handleFocus = (event: Event) => {
+    (event.target as HTMLInputElement).select()
 }
 </script>
 
@@ -292,7 +295,8 @@ const formatDate = (date: Date): string => {
                             <label for="prix">Prix unitaire HT</label>
                             <InputNumber id="prix" v-model="currentVehicle.prixUnitaireHT" mode="currency"
                                 :currency="config.currency" :minFractionDigits="config.decimals"
-                                :maxFractionDigits="config.decimals" class="w-full" />
+                                :maxFractionDigits="config.decimals" class="w-full"
+                                @focus="handleFocus" />
                         </div>
                     </div>
 

@@ -387,7 +387,9 @@ const validatePayment = async () => {
     }
 }
 
-
+const handleFocus = (event: Event) => {
+    (event.target as HTMLInputElement).select()
+}
 
 const formatDate = (date: Date): string => {
     return new Date(date).toLocaleDateString('fr-FR')
@@ -581,34 +583,33 @@ onMounted(async () => {
                         <Column field="paymentMethod" header="Mode *">
                             <template #body="slotProps">
                                 <Dropdown v-model="paymentLines[slotProps.index]!.paymentMethod"
-                                    :options="paymentMethods" optionLabel="label" optionValue="value" />
-                            </template>
-                        </Column>
-                        <Column field="amount" header="Montant *">
-                            <template #body="slotProps">
-                                <InputNumber v-model="paymentLines[slotProps.index]!.amount" mode="currency"
-                                    :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals" />
-                            </template>
-                        </Column>
-                        <Column field="reference" header="Référence">
-                            <template #body="slotProps">
-                                <InputText v-model="paymentLines[slotProps.index]!.reference" />
+                                    :options="paymentMethods" optionLabel="label" optionValue="value"
+                                    placeholder="Sélectionner" class="w-full" />
                             </template>
                         </Column>
                         <Column field="bankName" header="Banque">
                             <template #body="slotProps">
-                                <InputText v-model="paymentLines[slotProps.index]!.bankName" />
+                                <InputText v-model="paymentLines[slotProps.index]!.bankName" class="w-full"
+                                    :disabled="!['cheque', 'virement', 'traite'].includes(paymentLines[slotProps.index]!.paymentMethod)" />
                             </template>
                         </Column>
                         <Column field="dueDate" header="Échéance">
                             <template #body="slotProps">
                                 <Calendar v-model="paymentLines[slotProps.index]!.dueDate" dateFormat="dd/mm/yy"
-                                    v-if="['traite', 'cheque'].includes(paymentLines[slotProps.index]!.paymentMethod)" />
+                                    class="w-full"
+                                    :disabled="!['cheque', 'traite'].includes(paymentLines[slotProps.index]!.paymentMethod)" />
+                            </template>
+                        </Column>
+                        <Column field="amount" header="Montant *">
+                            <template #body="slotProps">
+                                <InputNumber v-model="paymentLines[slotProps.index]!.amount" mode="currency"
+                                    :currency="config.currency" locale="fr-TN" :minFractionDigits="config.decimals"
+                                    class="w-full" @focus="handleFocus" />
                             </template>
                         </Column>
                         <Column header="Actions">
                             <template #body="slotProps">
-                                <Button icon="pi pi-trash" severity="danger" text
+                                <Button icon="pi pi-trash" severity="danger" text rounded
                                     @click="removePaymentLine(slotProps.index)" />
                             </template>
                         </Column>
