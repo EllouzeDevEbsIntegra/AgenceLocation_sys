@@ -8,6 +8,7 @@ import {
     type VehicleExpenseType, type MiscExpenseType
 } from '../services/expenseService'
 import { getAllVehicles, type Vehicle } from '../services/vehicleService'
+import { getAllParameters, type Parameter } from '../services/parameterService'
 
 // Components
 import DataTable from 'primevue/datatable'
@@ -37,7 +38,7 @@ const deleteExpenseDialog = ref(false)
 
 // Filters
 const dateRange = ref<Date[]>([])
-const selectedCategoryFilter = ref<ExpenseCategory | null>(null)
+const selectedCategoryFilter = ref<string | null>(null)
 const selectedVehicleFilter = ref<string | null>(null)
 
 // Form
@@ -51,44 +52,9 @@ const expense = ref<Partial<Expense>>({
 })
 
 // Options
-const categories = [
-    { label: 'Charges Fixes', value: 'fixe' },
-    { label: 'Charges Véhicule', value: 'vehicule' },
-    { label: 'Charges Diverses', value: 'divers' }
-]
-
-const fixedTypes = [
-    { label: 'Loyer', value: 'loyer' },
-    { label: 'Salaire', value: 'salaire' },
-    { label: 'CNSS', value: 'cnss' },
-    { label: 'Impôt', value: 'impot' },
-    { label: 'Autre', value: 'autre' }
-]
-
-const vehicleTypes = [
-    { label: 'Entretien', value: 'entretien' },
-    { label: 'Assurance', value: 'assurance' },
-    { label: 'Lavage', value: 'lavage' },
-    { label: 'Carburant', value: 'carburant' },
-    { label: 'Taxe', value: 'taxe' },
-    { label: 'Réparation', value: 'reparation' },
-    { label: 'Autre', value: 'autre' }
-]
-
-const miscTypes = [
-    { label: 'Fourniture Bureau', value: 'fourniture_bureau' },
-    { label: 'Informatique', value: 'informatique' },
-    { label: 'Nettoyage', value: 'nettoyage' },
-    { label: 'Marketing', value: 'marketing' },
-    { label: 'Autre', value: 'autre' }
-]
-
-const paymentMethods = [
-    { label: 'Espèces', value: 'especes' },
-    { label: 'Chèque', value: 'cheque' },
-    { label: 'Virement', value: 'virement' },
-    { label: 'Carte Bancaire', value: 'carte' }
-]
+const categories = ref<Parameter[]>([])
+const allExpenseTypes = ref<Parameter[]>([])
+const paymentMethods = ref<Parameter[]>([])
 
 // Computed
 const filteredExpenses = computed(() => {
@@ -116,12 +82,8 @@ const filteredExpenses = computed(() => {
 })
 
 const expenseTypes = computed(() => {
-    switch (expense.value.category) {
-        case 'fixe': return fixedTypes
-        case 'vehicule': return vehicleTypes
-        case 'divers': return miscTypes
-        default: return []
-    }
+    if (!expense.value.category) return []
+    return allExpenseTypes.value.filter(t => t.parentValue === expense.value.category)
 })
 
 // KPIs
@@ -131,9 +93,22 @@ const vehicleExpensesTotal = computed(() => filteredExpenses.value.filter(e => e
 const miscExpensesTotal = computed(() => filteredExpenses.value.filter(e => e.category === 'divers').reduce((sum, item) => sum + item.amount, 0))
 
 // Methods
+const loadParameters = async () => {
+    try {
+        const allParams = await getAllParameters()
+        categories.value = allParams.filter(p => p.type === 'expense_category')
+        allExpenseTypes.value = allParams.filter(p => p.type === 'expense_type')
+        paymentMethods.value = allParams.filter(p => p.type === 'payment_method')
+    } catch (error) {
+        console.error('Error loading parameters:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les paramètres', life: 3000 })
+    }
+}
+
 onMounted(async () => {
     loading.value = true
     try {
+        await loadParameters()
         const [expensesData, vehiclesData] = await Promise.all([
             getAllExpenses(),
             getAllVehicles()
@@ -236,13 +211,12 @@ const getVehicleName = (id?: string) => {
 }
 
 const getCategoryLabel = (cat: string) => {
-    const found = categories.find(c => c.value === cat)
+    const found = categories.value.find(c => c.value === cat)
     return found ? found.label : cat
 }
 
 const getTypeLabel = (type: string) => {
-    const allTypes = [...fixedTypes, ...vehicleTypes, ...miscTypes]
-    const found = allTypes.find(t => t.value === type)
+    const found = allExpenseTypes.value.find(t => t.value === type)
     return found ? found.label : type
 }
 

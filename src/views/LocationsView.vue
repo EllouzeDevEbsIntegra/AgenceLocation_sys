@@ -72,19 +72,16 @@ const currentLocation = ref<Location>({
     statutFacturation: 'Ouvert'
 })
 
-const cautionTypes = [
-    { label: 'Espèces', value: 'especes' },
-    { label: 'Chèque', value: 'cheque' },
-    { label: 'Carte Bancaire', value: 'carte_bancaire' },
-    { label: 'Virement', value: 'virement' }
-]
+import {
+    getAllParameters, type Parameter
+} from '../services/parameterService'
 
-// Types d'anomalies prédéfinis
-const anomalyTypes = [
-    'Choc', 'Rayure', 'Fissure', 'Bosselure', 'Éclat peinture',
-    'Pare-choc endommagé', 'Rétroviseur cassé', 'Vitre fissurée',
-    'Pneu usé', 'Autre'
-]
+// ... existing imports ...
+
+const cautionTypes = ref<Parameter[]>([])
+const anomalyTypes = ref<Parameter[]>([])
+
+// ... existing code ...
 
 onMounted(async () => {
     await Promise.all([
@@ -92,9 +89,27 @@ onMounted(async () => {
         loadClients(),
         loadVehicles(),
         loadModels(),
-        loadBrands()
+        loadBrands(),
+        loadParameters()
     ])
 })
+
+const loadParameters = async () => {
+    try {
+        const allParams = await getAllParameters()
+        cautionTypes.value = allParams.filter(p => p.type === 'caution_type')
+        anomalyTypes.value = allParams.filter(p => p.type === 'anomaly_type')
+    } catch (error) {
+        console.error('Error loading parameters:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les paramètres', life: 3000 })
+    }
+}
+
+// ... existing code ...
+
+// In template for anomaly dropdowns:
+// Replace :options="anomalyTypes" with :options="anomalyTypes" optionLabel="label" optionValue="value"
+
 
 // Calculer les dates désactivées pour le véhicule sélectionné
 const disabledDates = computed(() => {
@@ -647,7 +662,7 @@ const generateInvoice = async (location: Location) => {
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Type</label>
-                                    <Dropdown v-model="anomaly.type" :options="anomalyTypes" editable
+                                    <Dropdown v-model="anomaly.type" :options="anomalyTypes" optionLabel="label" optionValue="value" editable
                                         placeholder="Sélectionner ou saisir" class="w-full" />
                                 </div>
                                 <div class="form-group">
@@ -689,7 +704,7 @@ const generateInvoice = async (location: Location) => {
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Type</label>
-                                    <Dropdown v-model="anomaly.type" :options="anomalyTypes" editable
+                                    <Dropdown v-model="anomaly.type" :options="anomalyTypes" optionLabel="label" optionValue="value" editable
                                         placeholder="Sélectionner ou saisir" class="w-full" />
                                 </div>
                                 <div class="form-group">

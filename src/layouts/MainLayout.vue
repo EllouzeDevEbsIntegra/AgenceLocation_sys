@@ -131,7 +131,7 @@ const handleLogout = async () => {
                                     <span>{{ userEmail }}</span>
                                 </div>
                                 <Button v-if="isAdmin" icon="pi pi-cog" @click="$router.push('/settings')"
-                                    severity="secondary" text rounded title="Paramètres" />
+                                    class="settings-button" text rounded title="Paramètres" />
                                 <Button label="Déconnexion" icon="pi pi-sign-out" severity="danger" size="small"
                                     @click="handleLogout" />
                             </div>
@@ -260,6 +260,14 @@ const handleLogout = async () => {
     border-radius: 8px;
     font-weight: 500;
     color: white;
+}
+
+.settings-button {
+    color: white !important;
+}
+
+.settings-button:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .user-info i {

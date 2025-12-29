@@ -22,6 +22,7 @@ import {
 } from '../services/paymentService'
 import { getAllClients, type Client } from '../services/clientService'
 import { getUnpaidInvoices, updateInvoicePaymentStatus, getInvoiceById, type InvoiceHeader } from '../services/invoiceService'
+import { getAllParameters, type Parameter } from '../services/parameterService'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -65,12 +66,7 @@ const paymentForm = ref<Omit<Payment, 'id'>>({
 const paymentLines = ref<Omit<PaymentLine, 'id' | 'paymentId'>[]>([])
 
 // Methods section definitions
-const paymentMethods: { label: string, value: PaymentMethod }[] = [
-    { label: 'Espèces', value: 'especes' },
-    { label: 'Chèque', value: 'cheque' },
-    { label: 'Traite', value: 'traite' },
-    { label: 'Virement', value: 'virement' }
-]
+const paymentMethods = ref<Parameter[]>([])
 
 // Computed
 const totalInvoices = computed(() =>
@@ -99,6 +95,24 @@ const loadPayments = async () => {
         loading.value = false
     }
 }
+
+const loadParameters = async () => {
+    try {
+        const allParams = await getAllParameters('payment_method')
+        paymentMethods.value = allParams
+    } catch (error) {
+        console.error('Error loading parameters:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les paramètres', life: 3000 })
+    }
+}
+
+onMounted(async () => {
+    await Promise.all([
+        loadPayments(),
+        loadClients(),
+        loadParameters()
+    ])
+})
 
 const loadClients = async () => {
     try {
@@ -384,7 +398,7 @@ const getClientName = (clientId: string): string => {
 }
 
 const getPaymentMethodLabel = (method: PaymentMethod): string => {
-    return paymentMethods.find(m => m.value === method)?.label || method
+    return paymentMethods.value.find(m => m.value === method)?.label || method
 }
 
 const getPaymentLineStatusLabel = (status: string): string => {
